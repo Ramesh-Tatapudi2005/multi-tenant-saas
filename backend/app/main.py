@@ -17,9 +17,36 @@ async def startup_event():
     print("✅ Initialization complete.")
     
 @app.get("/api/health")
-def health_check():
-    return {"status": "ok", "database": "connected"}
-    
+def health_check(db: Session = Depends(database.get_db)):
+    try:
+        # 1. Check if the database is connected
+        # 2. Check if the User table exists and has the seed data
+        user_count = db.query(models.User).count()
+        
+        if user_count > 0:
+            return {
+                "status": "ok", 
+                "database": "connected", 
+                "sealed": True,
+                "message": f"System ready with {user_count} users."
+            }
+        else:
+            # Table exists but seed script hasn't finished yet
+            return {
+                "status": "initializing", 
+                "database": "connected", 
+                "sealed": False
+            }
+            
+    except Exception as e:
+        # Database not reachable or tables not created yet
+        return {
+            "status": "error", 
+            "database": "disconnected", 
+            "details": str(e)
+        }, 503
+        
+        
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
