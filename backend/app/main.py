@@ -3,12 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import models, schemas, auth, database
 from typing import List
+from .seed import seed_data
 
 # Creates tables based on models.py definitions
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Initializing database...")
+    seed_data()
+    print("✅ Initialization complete.")
+    
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "database": "connected"}
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -30,21 +41,64 @@ def log_action(db: Session, tenant_id: str, user_id: int, action: str, entity_ty
     db.add(new_log)
     db.commit()
 
+# @app.post("/api/auth/login")
+# def login(request: schemas.LoginRequest, db: Session = Depends(database.get_db)):
+#     user = db.query(models.User).filter(models.User.email == request.email.lower()).first()
+#     if not user or not auth.verify_password(request.password, user.password_hash):
+#         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+#     token = auth.create_access_token({"userId": user.id, "tenantId": user.tenant_id, "role": user.role})
+    
+#     # Detailed login log for Super Admin monitoring
+#     log_detail = f"User {user.email} logged into tenant {request.tenantSubdomain or 'System'}"
+#     log_action(db, user.tenant_id, user.id, "LOGIN", "user", str(user.id), log_detail)
+    
+#     return {
+#         "success": True, 
+#         "data": {"token": token, "user": {"email": user.email, "role": user.role, "tenantId": user.tenant_id}}
+#     }
+
 @app.post("/api/auth/login")
 def login(request: schemas.LoginRequest, db: Session = Depends(database.get_db)):
+    # 1. Fetch user by email
     user = db.query(models.User).filter(models.User.email == request.email.lower()).first()
+    
+    # 2. Basic Credential Check
     if not user or not auth.verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    token = auth.create_access_token({"userId": user.id, "tenantId": user.tenant_id, "role": user.role})
+    # 3. ADDED: Tenant/Subdomain Validation
+    if user.role != "super_admin":
+        # Get the tenant based on the subdomain sent from the frontend
+        tenant = db.query(models.Tenant).filter(models.Tenant.subdomain == request.tenantSubdomain).first()
+        
+        if not tenant or user.tenant_id != tenant.id:
+            raise HTTPException(
+                status_code=403, 
+                detail="You do not have access to this tenant organization."
+            )
+
+    # 4. Create Token (userId, tenantId, and role are included)
+    token = auth.create_access_token({
+        "userId": user.id, 
+        "tenantId": user.tenant_id, 
+        "role": user.role
+    })
     
-    # Detailed login log for Super Admin monitoring
-    log_detail = f"User {user.email} logged into tenant {request.tenantSubdomain or 'System'}"
+    # 5. Log the action
+    log_detail = f"User {user.email} logged into {request.tenantSubdomain or 'System'}"
     log_action(db, user.tenant_id, user.id, "LOGIN", "user", str(user.id), log_detail)
     
     return {
         "success": True, 
-        "data": {"token": token, "user": {"email": user.email, "role": user.role, "tenantId": user.tenant_id}}
+        "data": {
+            "token": token, 
+            "user": {
+                "email": user.email, 
+                "role": user.role, 
+                "tenantId": user.tenant_id
+            }
+        }
     }
 
 @app.get("/api/audit-logs")

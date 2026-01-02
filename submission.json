@@ -4,11 +4,11 @@
     "test_credentials": {
     "super_admin": {
         "email": "superadmin@system.com",
-        "password": "admin123"
+        "password": "Admin@123"
     },
     "tenant_admin": {
         "email": "admin@demo.com",
-        "password": "password123",
+        "password": "Demo@123",
         "subdomain": "demo"
     }
 },
