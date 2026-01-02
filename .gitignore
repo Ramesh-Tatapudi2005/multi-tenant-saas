@@ -1,0 +1,39 @@
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Environment Secrets ---
+# We ignore the .env file to protect sensitive keys like JWT_SECRET
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Backend (Python/FastAPI) ---
+# Ignore Python compiled files and virtual environments
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.pytest_cache/
+backend/venv/
+backend/env/
+backend/.env
+
+# --- Frontend (React) ---
+# Ignore heavy dependencies and build artifacts
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Docker & Database ---
+# Persisted database volumes should not be committed
+db_data/
+*.log
+docker-compose.override.yml
