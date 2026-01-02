@@ -1,22 +1,23 @@
 {
-    "api_base_url": "http://localhost:5000",
-    "frontend_url": "http://localhost:3000",
-    "test_credentials": {
-    "super_admin": {
-        "email": "superadmin@system.com",
-        "password": "Admin@123"
+    "testCredentials": {
+    "superAdmin": {
+    "email": "superadmin@system.com",
+    "password": "Admin@123",
+    "role": "super_admin",
+    "tenantId": null
     },
-    "tenant_admin": {
+    "tenants": [
+    {
+        "name": "Demo Company",
+        "subdomain": "demo",
+        "status": "active",
+        "subscriptionPlan": "pro",
+        "admin": {
         "email": "admin@demo.com",
         "password": "Demo@123",
-        "subdomain": "demo"
+        "role": "tenant_admin"
+        }
     }
-},
-"features_implemented": [
-    "Multi-tenancy with subdomain isolation",
-    "JWT Authentication & Authorization",
-    "Subscription plan limit enforcement",
-    "Audit logging for all critical actions",
-    "Full CRUD for Projects and Tasks"
-]
+    ]
+}
 }
