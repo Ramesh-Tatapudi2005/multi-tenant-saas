@@ -29,11 +29,22 @@ const Dashboard = () => {
 
     // --- PROJECT ACTIONS ---
     const handleCreateProject = async () => {
-        if (!newProjectName || !canManage) return;
+    if (!newProjectName || !canManage) return;
+    
+    try {
         await API.post('/projects', { name: newProjectName });
         setNewProjectName(''); 
         fetchData();
-    };
+        alert("Project created successfully!");
+    } catch (e) {
+        // Handle the 403 error specifically
+        if (e.response && e.response.status === 403) {
+            alert(e.response.data.detail || "Limit Reached: Your plan does not allow more projects.");
+        } else {
+            alert("Failed to create project. Please try again.");
+        }
+    }
+};
 
     const handleDeleteProject = async (projectId) => {
         if (!canManage) return;

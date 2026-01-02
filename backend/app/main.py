@@ -169,24 +169,47 @@ def list_projects(db: Session = Depends(database.get_db), current_user: models.U
     return {"success": True, "data": {"projects": result}}
 
 @app.post("/api/projects", status_code=201)
-def create_project(request: schemas.ProjectCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+def create_project(
+    request: schemas.ProjectCreate, 
+    db: Session = Depends(database.get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # 1. (Optional) Check for Super Admin
     if current_user.role == "super_admin":
         raise HTTPException(status_code=403, detail="Super Admins are read-only.")
-    new_p = models.Project(name=request.name, description=request.description, tenant_id=current_user.tenant_id)
-    db.add(new_p); db.commit(); db.refresh(new_p)
+    
+    # 2. FETCH THE TENANT'S PLAN LIMITS
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    
+    # 3. COUNT EXISTING PROJECTS FOR THIS TENANT
+    current_count = db.query(models.Project).filter(
+        models.Project.tenant_id == current_user.tenant_id
+    ).count()
+
+    # 4. ENFORCE THE LIMIT
+    # Compare current count against the max_projects allowed for their plan
+    if current_count >= tenant.max_projects:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Subscription limit reached. Your plan allows only {tenant.max_projects} projects."
+        )
+
+    # 5. CREATE THE PROJECT IF UNDER LIMIT
+    new_p = models.Project(
+        name=request.name, 
+        description=request.description, 
+        tenant_id=current_user.tenant_id,
+        status="active"
+    )
+    
+    db.add(new_p)
+    db.commit()
+    db.refresh(new_p)
+    
+    # (Optional) Log the action
     log_action(db, current_user.tenant_id, current_user.id, "CREATE_PROJECT", "project", str(new_p.id), f"Project {new_p.name} created")
+    
     return {"success": True, "data": new_p}
-
-# @app.post("/api/tasks")
-# def create_task(request: schemas.TaskCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
-#     if current_user.role == "super_admin":
-#         raise HTTPException(status_code=403, detail="Super Admins cannot create tasks.")
-#     new_t = models.Task(project_id=request.projectId, tenant_id=current_user.tenant_id, title=request.title, status="pending")
-#     db.add(new_t); db.commit(); db.refresh(new_t)
-#     log_action(db, current_user.tenant_id, current_user.id, "CREATE_TASK", "task", str(new_t.id), f"Task {new_t.title} added")
-#     return {"success": True, "data": new_t}
-
-# backend/app/main.py
 
 @app.delete("/api/projects/{pid}")
 def delete_project(pid: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):

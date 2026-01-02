@@ -68,7 +68,7 @@ frontend/
 Ensure the following tools and versions are installed:
 - **Python:** Version 3.9 or higher (for backend).
 
-- **Node.js:** Version 18.x or higher (for frontend).
+- **React.js:** Version 19.x or higher (for frontend).
 
 - **Docker & Docker Compose:** Mandatory for the evaluation setup.
 
